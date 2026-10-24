@@ -39,4 +39,65 @@ const deck=[
 {name:'Denge',symbol:'⚖️',roman:'XIV',meaning:'ölçüyü, sabrı ve farklı ihtiyaçları uyumlandırmayı simgeler',love:'Yakınlık ve kişisel alan arasında sana iyi gelen dengeyi konuşmak ilişkiyi rahatlatabilir.',career:'Acele etmek yerine tempoyu sürdürülebilir kıl. İki farklı yaklaşımın ortasında işe yarar bir yol olabilir.',general:'Her şeyi aynı anda çözmeye çalışma. Ufak ayarlamalar zamanla büyük fark yaratabilir.'}
 ];
 const positions3=['Geçmiş','Şimdi','Yakın gelecek'];let queue=JSON.parse(localStorage.getItem('nisaQueue')||'[]'),current=null,lastReading='',lastName='';const $=id=>document.getElementById(id);function save(){localStorage.setItem('nisaQueue',JSON.stringify(queue))}function toast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),2400)}function cleanName(n){return n.trim().replace(/^@/,'').replace(/[<>]/g,'').slice(0,28)}function addPerson(name,topic){name=cleanName(name);if(!name){toast('Önce bir isim yaz.');return}if(queue.some(x=>x.name.toLowerCase()===name.toLowerCase())){toast('Bu kişi zaten sırada.');return}queue.push({id:Date.now()+Math.random(),name,topic,added:new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})});save();renderQueue();$('nameInput').value='';toast('@'+name+' fal sırasına eklendi.')}function renderQueue(){const el=$('queueList');$('queueCount').textContent=queue.length+' kişi';if(!queue.length){el.innerHTML='<div class="empty">Sırada kimse yok.<br>İlk katılımcıyı ekleyerek başla.</div>';return}el.innerHTML=queue.map((p,i)=>`<div class="queue-item"><div class="num">${i+1}</div><div class="qmeta"><strong>@${esc(p.name)}</strong><small>${esc(p.topic)} · ${p.added||'sırada'}</small></div><button class="tiny secondary" data-select="${p.id}">Seç</button><button class="tiny ghost" data-remove="${p.id}" aria-label="Sil">×</button></div>`).join('');el.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>selectPerson(queue.find(p=>String(p.id)===b.dataset.select)));el.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{queue=queue.filter(p=>String(p.id)!==b.dataset.remove);save();renderQueue()})}function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function selectPerson(p){if(!p){toast('Önce sıraya bir katılımcı ekle.');return}current=p;$('readingFor').textContent='@'+p.name+' · '+p.topic;$('readingTitle').textContent=p.topic+' açılımı';$('interpret').innerHTML=`<h3>✨ @${esc(p.name)} için hazırım</h3><p>Niyetini içinden tut. Hazır olduğunda “Falına bak” düğmesine dokun.</p><p class="note">Sembolik tarot yorumu · Eğlence ve öz değerlendirme amaçlıdır.</p>`;$('cards').innerHTML='<div class="card-placeholder">✧</div><div class="card-placeholder">☾</div><div class="card-placeholder">✧</div>';$('status').textContent='Sırada: @'+p.name+' · '+p.topic;document.querySelector('.reading-panel').scrollIntoView({behavior:'smooth',block:'start'})}function pickCards(n){const pool=[...deck];const out=[];while(out.length<n){out.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0])}return out}function makeInterpretation(p,cards){const topic=p.topic;const intro={Aşk:'Aşk niyetinde',Kariyer:'Kariyer niyetinde',Genel:'Genel açılımında','Kişisel gelişim':'Kendine ayırdığın bu anda'}[topic]||'Bu açılımda';const connect={Aşk:'Kartları bir kesin gelecek haberi gibi değil, ilişkilerinde neye ihtiyaç duyduğunu düşünmek için bir ayna gibi ele al.',Kariyer:'Kartları kesin bir sonuç olarak değil, seçeneklerini ve atabileceğin adımları düşünmek için bir araç olarak gör.',Genel:'Bu sembollerin sende uyandırdığı düşüncelere kulak ver; kendi hayatının kararlarını en iyi sen değerlendirebilirsin.','Kişisel gelişim':'Bu sembolleri kendine şefkatle yaklaşmak ve değiştirebileceğin bir adım bulmak için kullan.'}[topic]||'Bu sembolleri düşünmek için bir başlangıç olarak kullan.';let lines=[];cards.forEach((c,i)=>{const pos=cards.length===1?'Günün kartı':positions3[i];const sentence=i===0&&cards.length===3?`İlk kartın ${c.name}, ${c.meaning}.`:cards.length===1?`${c.name} kartı ${c.meaning}.`:i===1?`Şimdiki durum için gelen ${c.name}, ${c.meaning}.`:`Yakın gelecek konumundaki ${c.name}, ${c.meaning}.`;const topicLine=topic==='Aşk'?c.love:topic==='Kariyer'?c.career:c.general;lines.push(`<p><b style="color:#e8c8ff">${pos} · ${c.name}</b><br>${sentence} ${topicLine}</p>`)});const close=['Kendine şu soruyu sor: Bu yorumda sana dokunan düşünce hangisi?','Bugün atabileceğin en küçük, gerçekçi adımı seçmen yeterli.','Kartlar kararını senin yerine vermez; kendi sezgini ve gerçek koşullarını birlikte değerlendir.'][Math.floor(Math.random()*3)];return `<h3>✨ @${esc(p.name)} · ${topic} falı</h3><p>${intro}, kartlar bize şu sembolik hikâyeyi sunuyor:</p>${lines.join('')}<p>${connect}</p><p><i>${close}</i></p><p class="note">Bu, eğlence ve kişisel düşünme amaçlı sembolik bir yorumdur; geleceği kesin olarak öngörmez.</p>`}function draw(){if(!current){if(queue.length)selectPerson(queue[0]);else{toast('Önce bir katılımcı ekle.');return}}const n=$('styleInput').value==='1'?1:3,cards=pickCards(n);$('cards').innerHTML=cards.map((c,i)=>`<div class="tarot-card"><div class="card-art"><div class="roman">${c.roman}</div><div class="symbol">${c.symbol}</div><h3>${c.name}</h3></div><p>${n===1?'Günün mesajı':positions3[i]}</p></div>`).join('');$('interpret').innerHTML=makeInterpretation(current,cards);lastReading=$('interpret').innerText;lastName=current.name;$('status').textContent='Fal açıldı · @'+current.name+' · '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});$('history').textContent='Son fal: @'+current.name+' · '+current.topic;toast('@'+current.name+' için kartlar açıldı.')}function nextPerson(){if(!queue.length){current=null;$('readingFor').textContent='Henüz katılımcı seçilmedi';toast('Fal sırası boş.');return}let idx=current?queue.findIndex(p=>p.id===current.id):-1;if(idx<0)idx=-1;const next=queue[(idx+1)%queue.length];selectPerson(next)}$('addBtn').onclick=()=>addPerson($('nameInput').value,$('topicInput').value);$('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')addPerson($('nameInput').value,$('topicInput').value)});$('drawBtn').onclick=draw;$('nextBtn').onclick=nextPerson;$('copyBtn').onclick=async()=>{if(!lastReading){toast('Önce bir fal aç.');return}try{await navigator.clipboard.writeText(lastReading);toast('Yorum kopyalandı.')}catch(e){const t=document.createElement('textarea');t.value=lastReading;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();toast('Yorum kopyalandı.')}};$('demoBtn').onclick=()=>{[['mert','Aşk'],['aleyna','Kariyer'],['kaan','Genel'],['zeynep','Aşk']].forEach(([n,t])=>{if(!queue.some(p=>p.name===n))queue.push({id:Date.now()+Math.random(),name:n,topic:t,added:'demo'})});save();renderQueue();toast('Örnek katılımcılar eklendi.')};$('clearQueueBtn').onclick=()=>{if(confirm('Fal sırasındaki herkesi kaldırmak istiyor musun?')){queue=[];current=null;save();renderQueue();toast('Sıra temizlendi.')}};$('resetBtn').onclick=()=>{if(confirm('Uygulamayı sıfırlamak ve fal sırasını temizlemek istiyor musun?')){queue=[];current=null;save();renderQueue();$('cards').innerHTML='<div class="card-placeholder">✧</div><div class="card-placeholder">☾</div><div class="card-placeholder">✧</div>';$('interpret').innerHTML='<h3>✨ Nisa\'nın yorumu burada görünecek</h3><p>Bir katılımcı seç ve falına bak.</p>';lastReading='';toast('Uygulama sıfırlandı.')}};$('connectionInfo').onclick=()=>$('connectionDetails').classList.toggle('hidden');document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const target=b.dataset.target;if(target==='reading-panel')document.querySelector('.reading-panel').scrollIntoView({behavior:'smooth'});else $(target).scrollIntoView({behavior:'smooth'})});renderQueue();
+
+</script>
+<button id="speakBtn" style="position:fixed;bottom:75px;right:14px;z-index:20;background:linear-gradient(135deg,#8b5cf6,#c45ab4);border:0;border-radius:14px;padding:13px 16px;color:white;font-weight:bold;box-shadow:0 5px 20px #0006">
+🔊 Nisa sesli anlatsın
+</button>
+<script>
+const speakBtn = document.getElementById('speakBtn');
+
+speakBtn.addEventListener('click', function () {
+  if (!('speechSynthesis' in window)) {
+    alert('Tarayıcın sesli okumayı desteklemiyor. Chrome ile dene.');
+    return;
+  }
+
+  const text = document.getElementById('interpret').innerText;
+  if (!text || text.includes('yorumu burada görünecek')) {
+    alert('Önce bir katılımcı seçip falına bak.');
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  const speech = new SpeechSynthesisUtterance(text);
+  speech.lang = 'tr-TR';
+  speech.rate = 0.88;
+  speech.pitch = 1.12;
+
+  const voices = window.speechSynthesis.getVoices();
+  const turkishVoice = voices.find(v =>
+    v.lang.toLowerCase().startsWith('tr') &&
+    /female| kadın|seda|female/i.test(v.name)
+  ) || voices.find(v => v.lang.toLowerCase().startsWith('tr'));
+
+  if (turkishVoice) speech.voice = turkishVoice;
+
+  speech.onstart = () => {
+    speakBtn.textContent = '⏹️ Konuşmayı durdur';
+  };
+  speech.onend = () => {
+    speakBtn.textContent = '🔊 Nisa sesli anlatsın';
+  };
+
+  speech.onerror = () => {
+    speakBtn.textContent = '🔊 Nisa sesli anlatsın';
+    alert('Ses başlatılamadı. Sayfayı Chrome ile açıp tekrar dene.');
+  };
+
+  if (speechBtnIsSpeaking()) {
+    window.speechSynthesis.cancel();
+    speakBtn.textContent = '🔊 Nisa sesli anlatsın';
+    return;
+  }
+
+  window.speechSynthesis.speak(speech);
+
+  function speechBtnIsSpeaking() {
+    return window.speechSynthesis.speaking;
+  }
+});
 </script></body></html>
+</script></body></html>
+
